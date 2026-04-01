@@ -1,1 +1,356 @@
-# project-nlp-2026
+# Tutorial: จับชุดข้อมูล arXiv มา EDA + ทำ Multi-label Classification ด้วย TextCNN
+
+โปรเจกต์นี้เป็นงานสาย NLP ที่ทำครบ flow ตั้งแต่ดูข้อมูล, วิเคราะห์เชิงสถิติ, จนเทรนโมเดล TextCNN สำหรับทำนายหลาย label พร้อมกัน (multi-label text classification) จาก abstract ของงานวิจัย
+
+เนื้อหานี้ตั้งใจเขียนแบบภาษาคนทำงานจริงๆ อ่านง่าย ไม่วิชาการจ๋า และหยิบโค้ดจากโน้ตบุ๊กในโปรเจกต์มาอธิบายทีละส่วน
+
+## ในโปรเจกต์มีอะไรบ้าง
+
+- `ArXiv_MLTC_Datasets_EDA_660710714 (1).ipynb`: โน้ตบุ๊ก EDA
+- `TextCNN (1).ipynb`: โน้ตบุ๊กเทรนโมเดล TextCNN
+- `arxiv34k6L.csv`: ข้อมูลดิบจาก dataset
+- `data.csv`: ข้อมูลที่ผ่านขั้นตอนเตรียมแล้วบางส่วน
+
+## 1) Dataset นี้คืออะไร
+
+ชุดข้อมูลที่ใช้คือ ArXiv Multi-Label Text Classification
+
+ภาพรวมแบบสั้นๆ:
+
+- Input หลัก: `Abstracts` (ข้อความ abstract)
+- Output หลัก: หมวดหมู่ในรูปแบบหลายป้าย เช่น `['cs.LG', 'cs.CV']`
+- เป็นงาน multi-label: 1 abstract มีได้มากกว่า 1 label
+- โครงสร้าง label มีความเป็นลำดับชั้น (เช่น parent: `cs`, `stat` และ leaf class ย่อย)
+
+### ภาพรวม pipeline ของงาน
+
+```mermaid
+flowchart LR
+	A[Load CSV] --> B[Clean labels to list]
+	B --> C[EDA]
+	C --> D[Text preprocessing]
+	D --> E[Tokenization]
+	E --> F[TextCNN training]
+	F --> G[Evaluation: Micro F1]
+```
+
+## 2) สรุป EDA เบื้องต้น (อิงจากไฟล์ EDA)
+
+ฝั่ง EDA มีการเช็กหลายมุมพอสมควร ตั้งแต่ missing values ไปจนถึงความสัมพันธ์ระหว่าง label
+
+### สิ่งที่ทำใน EDA แบบเป็นขั้น
+
+1. เช็ก missing values ทั้งตาราง
+2. ดู class distribution แบบดิบ
+3. แยก label ที่ซ้อนกันออกมาเป็น `clean_labels`
+4. นับจำนวนแต่ละ class
+5. ดูสถิติการกระจาย: mean, median, std, percentile
+6. วาด cumulative coverage ว่าคลาสบนๆ ครอบคลุมข้อมูลกี่ %
+7. คำนวณ label cardinality และ label density
+8. ทำ label co-occurrence matrix
+9. วิเคราะห์ความยาวข้อความ (text length, word count)
+10. ดูคำที่พบบ่อย + word cloud
+11. สรุป distribution ระดับ parent category
+12. ลองทำ TF-IDF + PCA เพื่อดูการกระจายเชิงโครงสร้าง
+
+### ไฮไลต์ที่ได้จาก EDA
+
+- ข้อมูลมี class imbalance ค่อนข้างชัด (บางคลาสเยอะมาก บางคลาสน้อย)
+- หนึ่งตัวอย่างไม่ได้มีแค่ label เดียวตลอด
+- ค่า Label Cardinality ประมาณ `1.52` หมายถึงโดยเฉลี่ยหนึ่ง abstract มีประมาณ 1-2 label
+- จากกราฟ co-occurrence เห็นคู่ label ที่ชอบมาด้วยกัน
+- PCA 2 มิติช่วยเห็นภาพรวม แต่ยังแยกคลัสเตอร์แบบคมๆ ไม่ได้
+
+### รูปประกอบ: มุมมอง EDA ที่ทำ
+
+```mermaid
+mindmap
+  root((EDA))
+	Data Quality
+	  Missing values
+	  Type checking
+	Label Analysis
+	  Class distribution
+	  Cardinality
+	  Density
+	  Co-occurrence matrix
+	Text Analysis
+	  Word count
+	  Text length
+	  Top words
+	  Word cloud
+	Structure
+	  Parent vs child labels
+	  TF-IDF + PCA
+```
+
+## 3) โครงสร้างโมเดล (TextCNN)
+
+โมเดลที่ใช้เป็น TextCNN แบบคลาสสิก แต่เอา input จาก tokenizer ของ `bert-base-uncased` เพื่อให้ได้ token id ที่มาตรฐาน
+
+### โครงสร้างแบบเห็นภาพ
+
+```mermaid
+flowchart TD
+	A[input_ids] --> B[Embedding 128-d]
+	B --> C1[Conv1d k=3, ch=100]
+	B --> C2[Conv1d k=4, ch=100]
+	B --> C3[Conv1d k=5, ch=100]
+	C1 --> D1[Global Max Pool]
+	C2 --> D2[Global Max Pool]
+	C3 --> D3[Global Max Pool]
+	D1 --> E[Concat 300-d]
+	D2 --> E
+	D3 --> E
+	E --> F[Dropout 0.5]
+	F --> G[Linear -> num_classes]
+	G --> H[Sigmoid per class]
+```
+
+สรุปแนวคิดสั้นๆ:
+
+- Conv หลายขนาด kernel ช่วยจับ pattern ของคำหลายช่วง
+- Max pooling ดึง feature ที่เด่นสุดของแต่ละ filter
+- ปลายทางเป็น multi-label เลยใช้ `BCEWithLogitsLoss`
+
+## 4) โค้ดแต่ละส่วน + คำอธิบายละเอียด
+
+ด้านล่างคือบล็อกโค้ดหลักๆ ที่ใช้จริงในโน้ตบุ๊ก พร้อมอธิบายว่ามันทำอะไรและทำไปเพื่ออะไร
+
+### 4.1 โหลดข้อมูลและเตรียม label
+
+```python
+import pandas as pd
+import ast
+
+df = pd.read_csv("data.csv")
+df = df.dropna(subset=['clean_labels'])
+df["clean_labels"] = df["clean_labels"].apply(ast.literal_eval)
+
+texts = df["Abstracts"].astype(str)
+labels = df["clean_labels"]
+```
+
+อธิบาย:
+
+- `dropna` กันแถวที่ไม่มี label ออกก่อน จะได้ไม่พังตอนเทรน
+- `ast.literal_eval` แปลง string ที่หน้าตาเหมือน list ให้เป็น list จริง
+- แยก `texts` กับ `labels` ให้ชัดไว้ใช้ในขั้นถัดไป
+
+### 4.2 แปลง label เป็นเวกเตอร์ multi-hot
+
+```python
+from sklearn.preprocessing import MultiLabelBinarizer
+
+mlb = MultiLabelBinarizer()
+y = mlb.fit_transform(labels)
+num_classes = len(mlb.classes_)
+```
+
+อธิบาย:
+
+- งาน multi-label ต้องให้โมเดลทำนายทีละ class แบบ 0/1
+- `fit_transform` จะเปลี่ยน label list ของแต่ละแถวเป็นเวกเตอร์ เช่น `[1,0,1,0]`
+- `num_classes` เอาไปกำหนดขนาด output layer
+
+### 4.3 Tokenization
+
+```python
+from transformers import AutoTokenizer
+
+tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
+
+MAX_LEN = 256
+encodings = tokenizer(
+	texts.tolist(),
+	padding=True,
+	truncation=True,
+	max_length=MAX_LEN,
+	return_tensors="pt"
+)
+```
+
+อธิบาย:
+
+- ใช้ tokenizer ของ BERT เพื่อให้ token id เสถียรและมาตรฐาน
+- `padding=True` ทำให้ความยาวทุกตัวอย่างเท่ากัน
+- `truncation=True` ตัดข้อความยาวเกิน `MAX_LEN` เพื่อควบคุม memory และเวลาเทรน
+
+### 4.4 สร้าง Dataset class สำหรับ PyTorch
+
+```python
+import torch
+from torch.utils.data import Dataset
+
+class PaperDataset(Dataset):
+	def __init__(self, encodings, labels):
+		self.encodings = encodings
+		self.labels = torch.tensor(labels).float()
+
+	def __len__(self):
+		return len(self.labels)
+
+	def __getitem__(self, idx):
+		item = {key: val[idx] for key, val in self.encodings.items()}
+		item["labels"] = self.labels[idx]
+		return item
+```
+
+อธิบาย:
+
+- ทำให้ DataLoader ดึงข้อมูลเป็น batch ได้สะดวก
+- label ต้องเป็น `float()` เพราะ `BCEWithLogitsLoss` ต้องการค่า float
+- ทุกครั้งที่เรียก index จะได้ทั้ง input และ label กลับมา
+
+### 4.5 แบ่ง train/test และทำ DataLoader
+
+```python
+from sklearn.model_selection import train_test_split
+from torch.utils.data import DataLoader
+
+train_idx, test_idx = train_test_split(
+	range(len(texts)),
+	test_size=0.2,
+	random_state=42
+)
+
+train_enc = {k: v[train_idx] for k, v in encodings.items()}
+test_enc = {k: v[test_idx] for k, v in encodings.items()}
+
+train_labels = y[train_idx]
+test_labels = y[test_idx]
+
+train_dataset = PaperDataset(train_enc, train_labels)
+test_dataset = PaperDataset(test_enc, test_labels)
+
+train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True)
+test_loader = DataLoader(test_dataset, batch_size=16)
+```
+
+อธิบาย:
+
+- split 80/20 สำหรับ train/test
+- `shuffle=True` เฉพาะ train เพื่อกันโมเดลจำลำดับข้อมูล
+- batch size ใช้ 16 ตามทรัพยากรทั่วไปในงานโน้ตบุ๊ก
+
+### 4.6 นิยามโมเดล TextCNN
+
+```python
+import torch.nn as nn
+import torch
+
+class TextCNN(nn.Module):
+	def __init__(self, vocab_size, embed_dim, num_classes):
+		super().__init__()
+		self.embedding = nn.Embedding(vocab_size, embed_dim)
+		self.convs = nn.ModuleList([
+			nn.Conv1d(embed_dim, 100, kernel_size=3),
+			nn.Conv1d(embed_dim, 100, kernel_size=4),
+			nn.Conv1d(embed_dim, 100, kernel_size=5)
+		])
+		self.dropout = nn.Dropout(0.5)
+		self.fc = nn.Linear(300, num_classes)
+
+	def forward(self, input_ids):
+		x = self.embedding(input_ids)
+		x = x.permute(0, 2, 1)
+		convs = [torch.relu(conv(x)) for conv in self.convs]
+		pools = [torch.max(c, dim=2)[0] for c in convs]
+		x = torch.cat(pools, dim=1)
+		x = self.dropout(x)
+		logits = self.fc(x)
+		return logits
+```
+
+อธิบาย:
+
+- Embedding แปลง token id เป็น dense vector
+- `permute(0,2,1)` เพื่อจัดมิติให้เข้ากับ `Conv1d`
+- Conv 3 ชุด (k=3,4,5) จับ n-gram หลายขนาด
+- max-over-time pooling ดึง feature ที่แรงสุดของแต่ละ filter
+- concat แล้วส่งเข้า linear เพื่อได้ logits ของทุก class
+
+### 4.7 ตั้งค่า loss/optimizer แล้วเทรน
+
+```python
+import torch.optim as optim
+
+vocab_size = tokenizer.vocab_size
+model = TextCNN(vocab_size=vocab_size, embed_dim=128, num_classes=num_classes)
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+model.to(device)
+
+criterion = nn.BCEWithLogitsLoss()
+optimizer = optim.Adam(model.parameters(), lr=2e-4)
+
+for epoch in range(100):
+	model.train()
+	total_loss = 0
+
+	for batch in train_loader:
+		input_ids = batch["input_ids"].to(device)
+		labels = batch["labels"].to(device)
+
+		optimizer.zero_grad()
+		logits = model(input_ids)
+		loss = criterion(logits, labels)
+		loss.backward()
+		optimizer.step()
+
+		total_loss += loss.item()
+
+	print(f"Epoch {epoch+1} Loss:", total_loss / len(train_loader))
+```
+
+อธิบาย:
+
+- `BCEWithLogitsLoss` เหมาะกับ multi-label เพราะคำนวณแยกแต่ละ class ได้ตรงโจทย์
+- ใช้ `Adam` ที่ learning rate `2e-4`
+- เทรน 100 epoch ในโน้ตบุ๊กตัวอย่าง (งานจริงแนะนำมี early stopping)
+
+### 4.8 ประเมินผลด้วย Micro F1
+
+```python
+from sklearn.metrics import f1_score
+
+model.eval()
+all_preds = []
+
+with torch.no_grad():
+	for batch in test_loader:
+		input_ids = batch["input_ids"].to(device)
+		logits = model(input_ids)
+		probs = torch.sigmoid(logits)
+		preds = (probs > 0.5).int()
+		all_preds.append(preds.cpu())
+
+preds = torch.cat(all_preds).numpy()
+f1_micro = f1_score(test_labels, preds, average="micro")
+print("Micro F1:", f1_micro)
+```
+
+อธิบาย:
+
+- แปลง logits ด้วย sigmoid ให้เป็นความน่าจะเป็นรายคลาส
+- threshold 0.5 เพื่อเปลี่ยนเป็น 0/1
+- ใช้ `micro F1` เพราะเหมาะกับงาน multi-label และช่วยสะท้อนภาพรวมทั้งระบบ
+
+## 5) สรุปแบบใช้งานจริง
+
+ถ้าจะเล่าแบบตรงๆ สำหรับโปรเจกต์นี้:
+
+- EDA ช่วยมากในการเห็นปัญหา class imbalance และธรรมชาติของ multi-label
+- TextCNN เป็น baseline ที่ดี เร็ว และตีความ flow ได้ง่าย
+- tokenizer แบบ BERT ช่วยเรื่อง vocabulary coverage ให้ดีขึ้น
+
+ถ้าจะต่อยอด แนะนำลอง:
+
+1. ปรับ threshold รายคลาสแทนใช้ 0.5 ค่าเดียว
+2. ใช้ class weights หรือ focal loss ลดผลกระทบ imbalance
+3. เพิ่ม validation split + early stopping
+4. เทียบกับ transformer-based classifier แบบ fine-tuning เต็มตัว
+
+---
+
+ถ้าอยากให้ผมต่อภาค 2 แบบลงลึกเรื่องการจูนโมเดล (เช่น kernel/filter/dropout/lr) เดี๋ยวจัดเป็น checklist ที่เอาไปลองรันได้ทันทีให้ได้เลย
