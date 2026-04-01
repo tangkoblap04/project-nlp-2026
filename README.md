@@ -46,11 +46,11 @@
 
 ### ผลสรุปสำคัญจากการทำ EDA
 
-- ข้อมูลมี class imbalance ค่อนข้างชัด (บางคลาสเยอะมาก บางคลาสน้อย)
+- ข้อมูลมี class imbalance (บางคลาสเยอะมาก บางคลาสน้อย)
 - หนึ่งตัวอย่างไม่ได้มีแค่ label เดียวตลอด
 - ค่า Label Cardinality ประมาณ 1.52 หมายถึงโดยเฉลี่ยหนึ่ง row มีประมาณ 1-2 label
 - จากกราฟ co-occurrence เห็นคู่ label ที่ชอบมาด้วยกัน
-- PCA 2 มิติช่วยเห็นภาพรวม แต่ยังแยกคลัสเตอร์แบบคมๆ ไม่ได้
+- PCA 2 มิติช่วยเรื่องภาพรวม แต่ยังแยกคลัสเตอร์แบบ ไม่ได้
 
 
 ## 3. โครงสร้างโมเดล (TextCNN)
@@ -104,9 +104,9 @@ labels = df["clean_labels"]
 
 อธิบาย:
 
-- dropna กันแถวที่ไม่มี label ออกก่อน จะได้ไม่พังตอนเทรน
-- ast.literal_eval แปลง string ที่หน้าตาเหมือน list ให้เป็น list จริง
-- แยก texts กับ labels ให้ชัดไว้ใช้ในขั้นถัดไป
+- dropna เพื่อป้องกันแถวที่ไม่มี label ออก จะได้ไม่พังตอนเทรน เนื่องจาก Code การทำงานไม่สามารถทำงานกับข้อมูลที่เป็น Null ได้
+- ast.literal_eval แปลง string ที่หน้าตาเหมือน list ให้เป็น list จริง ในลักษณะของโครงสร้างของ target ที่ได้อธิบายไป
+- แยก texts กับ labels ให้ชัดไว้ใช้ในขั้นตอนถัดไป
 
 ### 4.2 แปลง label เป็นเวกเตอร์ multi-hot
 
@@ -120,8 +120,8 @@ num_classes = len(mlb.classes_)
 
 อธิบาย:
 
-- งาน multi-label ต้องให้โมเดลทำนายทีละ class แบบ 0/1
-- fit_transform จะเปลี่ยน label list ของแต่ละแถวเป็นเวกเตอร์ เช่น [1,0,1,0]
+- งานจำพวก multi-label ต้องให้โมเดลทำนายทีละ class แบบ 0/1
+- fit_transform จะเปลี่ยน label list ของแต่ละแถวเป็นเวกเตอร์ ตัวอย่างเช่น [1,0,1,0]
 - num_classes เอาไปกำหนดขนาด output layer
 
 ### 4.3 Tokenization
@@ -143,9 +143,9 @@ encodings = tokenizer(
 
 อธิบาย:
 
-- ใช้ tokenizer ของ BERT เพื่อให้ token id เสถียรและมาตรฐาน
+- ใช้ tokenizer ของ BERT เพื่อให้ token id เสถียรและมาตรฐาน และจำให้ model จับความสัมพันธ์ได้ดี มีความถูกต้อง
 - padding=True ทำให้ความยาวทุกตัวอย่างเท่ากัน
-- truncation=True ตัดข้อความยาวเกิน MAX_LEN เพื่อควบคุม memory และเวลาเทรน
+- truncation=True ตัดข้อความยาวเกิน MAX_LEN เพื่อควบคุมหน่วยความจำ (memory) และเวลาในการเทรน
 
 ### 4.4 สร้าง Dataset class สำหรับ PyTorch
 
@@ -169,9 +169,9 @@ class PaperDataset(Dataset):
 
 อธิบาย:
 
-- ทำให้ DataLoader ดึงข้อมูลเป็น batch ได้สะดวก
+- ทำให้ DataLoader ดึงข้อมูลเป็น batch ได้ดีขึ้น
 - label ต้องเป็น float() เพราะ **BCEWithLogitsLoss** ต้องการค่า float
-- ทุกครั้งที่เรียก index จะได้ทั้ง input และ label กลับมา
+- ทุกครั้งที่เรียก index จะดึงทั้ง input และ label กลับมา
 
 ### 4.5 แบ่ง train/test และทำ DataLoader
 
@@ -236,7 +236,7 @@ class TextCNN(nn.Module):
 อธิบาย:
 
 - Embedding แปลง token id เป็น dense vector
-- permute(0,2,1) เพื่อจัดมิติให้เข้ากับ Conv1d
+- permute(0,2,1) เพื่อจัดมิติให้เข้ากับ Conv1d เพราะ Conv1d ต้องการข้อมูลเข้าเป็นมิติดังกล่าว
 - Conv 3 ชุด (k=3,4,5) จับ n-gram หลายแบบ
 - max-over-time pooling ดึง feature ที่ส่งผลที่สุดของแต่ละ filter
 - concat แล้วส่งเข้า linear เพื่อได้ logits ของทุก class
@@ -276,7 +276,7 @@ for epoch in range(100):
 
 อธิบาย:
 
-- **BCEWithLogitsLoss** เหมาะกับ multi-label เพราะคำนวณแยกแต่ละ class ได้ตรงโจทย์
+- **BCEWithLogitsLoss** เหมาะกับ multi-label เพราะคำนวณแยกแต่ละ class ได้ตรงตามที่คาดหวังไว้ตามหัวข้องาน
 - ใช้ Adam ที่ learning rate = 2e-4
 - เทรน 100 epoch 
 
@@ -304,7 +304,7 @@ print("Micro F1:", f1_micro)
 อธิบาย:
 
 - แปลง logits ด้วย sigmoid ให้เป็นความน่าจะเป็นรายคลาส
-- threshold 0.5 เพื่อเปลี่ยนเป็น 0/1
+- threshold 0.5 เพื่อเปลี่ยนเป็น 0/1 และเป็นเกรฑ์การตัดข้อมูล
 - ใช้ micro F1 เพราะเหมาะกับงาน multi-label 
 - โดย model TextCNN มีค่าประสิทธิภาพโดยประมาณอยู่ที่ 0.848
 
@@ -384,8 +384,8 @@ plt.show()
 
 - ฝั่งซ้ายคือ loss ต่อ epoch: ยิ่งลดลงยิ่งดี
 - ฝั่งขวาคือ exact-match accuracy: จะนับว่าถูกก็ต่อเมื่อทาย label ครบทุกตัวของ sample นั้น
-- ถ้า loss ลงแต่ accuracy ไม่ขึ้น แปลว่า threshold หรือการกระจายคลาสอาจยังเป็นคอขวด
-- จากรูปนี้เห็นว่า loss ค่อยๆ ลดลง และ accuracy ค่อยๆ ไต่ขึ้น แปลว่าโมเดลเรียนรู้ได้ต่อเนื่องและยังไม่เห็นอาการหลุดหนักระหว่าง Train
+- ถ้า loss ลงแต่ accuracy ไม่ขึ้น แปลว่า threshold หรือการกระจายคลาสอาจยังเป็นลักษณะข้อมูลที่มีการกระจุกตัว หรือ Flow ไม่ค่อยดี (คอขวด)
+- จากรูปนี้เห็นว่า loss ค่อยๆ ลดลง และ accuracy ค่อยๆ ไต่ขึ้น แปลว่าโมเดลเรียนรู้ได้ต่อเนื่อง
 
 ### 4.10 ประเมินโมเดล: accuracy และ confusion matrix
 
@@ -458,7 +458,7 @@ plt.show()
 - Exact-match accuracy โหดกว่า เพราะต้องถูกทั้งชุด label ของ sample นั้น
 - Label-wise accuracy ใจดีกว่า เอาความถูกทีละ label มารวมกัน
 - confusion matrix จะบอกต่อคลาสว่าโมเดลพลาดแบบไหนบ่อย
-- ถ้าเห็น FN เยอะในคลาสไหน แปลว่าโมเดลมักมองไม่เห็นคลาสนั้น (ควรแก้ class imbalance หรือปรับ threshold)
+- ถ้าเห็น FN เยอะในคลาสไหน แปลว่าโมเดลมักมองไม่เห็นคลาสนั้น 
 - จากรูปนี้คลาส cs.CV และ cs.LG ค่าทายถูกฝั่ง True 1 ค่อนข้างดี ส่วน stat.ML ยังมี FN สูงพอสมควร เลยเป็นคลาสที่ควรโฟกัสปรับเพิ่ม
 
 ## 5. วิธีคำนวณจำนวนพารามิเตอร์ของโมเดล
