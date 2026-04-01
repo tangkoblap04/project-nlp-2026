@@ -306,11 +306,71 @@ print("Micro F1:", f1_micro)
 - ใช้ micro F1 เพราะเหมาะกับงาน multi-label 
 - โดย model TextCNN มีค่าประสิทธิภาพโดยประมาณอยู่ที่ 0.848
 
+## 5. วิธีคำนวณจำนวนพารามิเตอร์ของโมเดล
+
+อันนี้เป็นวิธีนับพารามิเตอร์ของ TextCNN ตัวนี้แบบมือ และดูว่าพารามิเตอร์ไปกองอยู่ตรงไหนเยอะสุด
+
+### 5.1 สูตรที่ใช้
+
+- Embedding: `vocab_size x embed_dim`
+- Conv1d: `out_channels x (in_channels x kernel_size + 1)`
+- Linear: `out_features x (in_features + 1)`
+
+หมายเหตุ: `+1` คือ bias
+
+### 5.2 แทนค่าจากโมเดลนี้
+
+ค่าจากโค้ด:
+
+- `vocab_size = 30522` (จาก `bert-base-uncased`)
+- `embed_dim = 128`
+- Conv 3 ชั้น: `out_channels = 100`, `kernel_size = 3,4,5`
+- Linear: `in_features = 300`, `out_features = num_classes`
+
+คำนวณ:
+
+1. Embedding
+
+- `30522 x 128 = 3,906,816`
+
+2. Conv1d (k=3)
+
+- `100 x (128 x 3 + 1) = 100 x 385 = 38,500`
+
+3. Conv1d (k=4)
+
+- `100 x (128 x 4 + 1) = 100 x 513 = 51,300`
+
+4. Conv1d (k=5)
+
+- `100 x (128 x 5 + 1) = 100 x 641 = 64,100`
+
+5. Linear
+
+- `num_classes x (300 + 1)`
+- ถ้า `num_classes = 4` จะได้ `4 x 301 = 1,204`
+
+รวมทั้งหมด (กรณี 4 คลาส):
+
+- `3,906,816 + 38,500 + 51,300 + 64,100 + 1,204 = 4,061,920`
+
+สรุปสั้นๆ:
+
+- พารามิเตอร์ส่วนใหญ่จะอยู่ที่ Embedding
+- ถ้าอยากลดขนาดโมเดล ให้เริ่มจากลด `embed_dim` หรือใช้ vocab เล็กลง
+
+### 5.3 เช็กจำนวนพารามิเตอร์ด้วยโค้ด
+
+```python
+total_params = sum(p.numel() for p in model.parameters())
+trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+
+print("Total params:", total_params)
+print("Trainable params:", trainable_params)
+
+---
 ## 5. สรุปภาพรวม
 
 - EDA ช่วยในการเห็นปัญหา class imbalance และธรรมชาติของ multi-label
 - tokenizer แบบ BERT ช่วยให้ดีขึ้น
 - TextCNN มีค่าประสิทธิภาพอยู่ที่ประมาณ 0.848
-
-
----
