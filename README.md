@@ -2,8 +2,6 @@
 
 โปรเจกต์นี้เป็นงานสาย NLP ที่ทำครบ flow ตั้งแต่ดูข้อมูล, วิเคราะห์เชิงสถิติ, จนเทรนโมเดล TextCNN สำหรับทำนายหลาย label พร้อมกัน (multi-label text classification) จาก abstract ของงานวิจัย
 
-เนื้อหานี้ตั้งใจเขียนแบบภาษาคนทำงานจริงๆ อ่านง่าย ไม่วิชาการจ๋า และหยิบโค้ดจากโน้ตบุ๊กในโปรเจกต์มาอธิบายทีละส่วน
-
 ## ในโปรเจกต์มีอะไรบ้าง
 
 - `ArXiv_MLTC_Datasets_EDA_660710714 (1).ipynb`: โน้ตบุ๊ก EDA
@@ -11,34 +9,23 @@
 - `arxiv34k6L.csv`: ข้อมูลดิบจาก dataset
 - `data.csv`: ข้อมูลที่ผ่านขั้นตอนเตรียมแล้วบางส่วน
 
-## 1) Dataset นี้คืออะไร
+## 1. Dataset นี้คืออะไร
 
-ชุดข้อมูลที่ใช้คือ ArXiv Multi-Label Text Classification
+ชุดข่อมูลที่ใช้คือ ArXiv Multi-Label Text Classification
 
-ภาพรวมแบบสั้นๆ:
+ภาพรวมแบบสั้รๆ:
 
 - Input หลัก: `Abstracts` (ข้อความ abstract)
 - Output หลัก: หมวดหมู่ในรูปแบบหลายป้าย เช่น `['cs.LG', 'cs.CV']`
 - เป็นงาน multi-label: 1 abstract มีได้มากกว่า 1 label
-- โครงสร้าง label มีความเป็นลำดับชั้น (เช่น parent: `cs`, `stat` และ leaf class ย่อย)
+- โครงสร้าง label มีความเป็นลดับชั้น (เช่น parent: `cs`, `stat` และ leaf class ย่อย)
 
-### ภาพรวม pipeline ของงาน
 
-```mermaid
-flowchart LR
-	A[Load CSV] --> B[Clean labels to list]
-	B --> C[EDA]
-	C --> D[Text preprocessing]
-	D --> E[Tokenization]
-	E --> F[TextCNN training]
-	F --> G[Evaluation: Micro F1]
-```
-
-## 2) สรุป EDA เบื้องต้น (อิงจากไฟล์ EDA)
+## 2. สรุป EDA (อิงจากไฟล์ EDA)
 
 ฝั่ง EDA มีการเช็กหลายมุมพอสมควร ตั้งแต่ missing values ไปจนถึงความสัมพันธ์ระหว่าง label
 
-### สิ่งที่ทำใน EDA แบบเป็นขั้น
+### สิ่งที่ทำใน EDA 
 
 1. เช็ก missing values ทั้งตาราง
 2. ดู class distribution แบบดิบ
@@ -53,38 +40,16 @@ flowchart LR
 11. สรุป distribution ระดับ parent category
 12. ลองทำ TF-IDF + PCA เพื่อดูการกระจายเชิงโครงสร้าง
 
-### ไฮไลต์ที่ได้จาก EDA
+### ผลสรุปสำคัญจากการทำ EDA
 
 - ข้อมูลมี class imbalance ค่อนข้างชัด (บางคลาสเยอะมาก บางคลาสน้อย)
 - หนึ่งตัวอย่างไม่ได้มีแค่ label เดียวตลอด
-- ค่า Label Cardinality ประมาณ `1.52` หมายถึงโดยเฉลี่ยหนึ่ง abstract มีประมาณ 1-2 label
+- ค่า Label Cardinality ประมาณ `1.52` หมายถึงโดยเฉลี่ยหนึ่ง row มีประมาณ 1-2 label
 - จากกราฟ co-occurrence เห็นคู่ label ที่ชอบมาด้วยกัน
 - PCA 2 มิติช่วยเห็นภาพรวม แต่ยังแยกคลัสเตอร์แบบคมๆ ไม่ได้
 
-### รูปประกอบ: มุมมอง EDA ที่ทำ
 
-```mermaid
-mindmap
-  root((EDA))
-	Data Quality
-	  Missing values
-	  Type checking
-	Label Analysis
-	  Class distribution
-	  Cardinality
-	  Density
-	  Co-occurrence matrix
-	Text Analysis
-	  Word count
-	  Text length
-	  Top words
-	  Word cloud
-	Structure
-	  Parent vs child labels
-	  TF-IDF + PCA
-```
-
-## 3) โครงสร้างโมเดล (TextCNN)
+## 3. โครงสร้างโมเดล (TextCNN)
 
 โมเดลที่ใช้เป็น TextCNN แบบคลาสสิก แต่เอา input จาก tokenizer ของ `bert-base-uncased` เพื่อให้ได้ token id ที่มาตรฐาน
 
@@ -107,13 +72,13 @@ flowchart TD
 	G --> H[Sigmoid per class]
 ```
 
-สรุปแนวคิดสั้นๆ:
+สรุป:
 
 - Conv หลายขนาด kernel ช่วยจับ pattern ของคำหลายช่วง
 - Max pooling ดึง feature ที่เด่นสุดของแต่ละ filter
 - ปลายทางเป็น multi-label เลยใช้ `BCEWithLogitsLoss`
 
-## 4) โค้ดแต่ละส่วน + คำอธิบายละเอียด
+## 4. Code แต่ละส่วน + คำอธิบายละเอียด
 
 ด้านล่างคือบล็อกโค้ดหลักๆ ที่ใช้จริงในโน้ตบุ๊ก พร้อมอธิบายว่ามันทำอะไรและทำไปเพื่ออะไร
 
@@ -230,7 +195,7 @@ test_loader = DataLoader(test_dataset, batch_size=16)
 อธิบาย:
 
 - split 80/20 สำหรับ train/test
-- `shuffle=True` เฉพาะ train เพื่อกันโมเดลจำลำดับข้อมูล
+- `shuffle=True` เฉพาะ train เพื่อกันโมเดลจำลำดับข้อมูล ไม่ทำใน Test set เพราะป้องกันการรั่วลองผลเฉลย
 - batch size ใช้ 16 ตามทรัพยากรทั่วไปในงานโน้ตบุ๊ก
 
 ### 4.6 นิยามโมเดล TextCNN
@@ -266,8 +231,8 @@ class TextCNN(nn.Module):
 
 - Embedding แปลง token id เป็น dense vector
 - `permute(0,2,1)` เพื่อจัดมิติให้เข้ากับ `Conv1d`
-- Conv 3 ชุด (k=3,4,5) จับ n-gram หลายขนาด
-- max-over-time pooling ดึง feature ที่แรงสุดของแต่ละ filter
+- Conv 3 ชุด (k=3,4,5) จับ n-gram หลายแบบ
+- max-over-time pooling ดึง feature ที่ส่งผลที่สุดของแต่ละ filter
 - concat แล้วส่งเข้า linear เพื่อได้ logits ของทุก class
 
 ### 4.7 ตั้งค่า loss/optimizer แล้วเทรน
@@ -307,7 +272,7 @@ for epoch in range(100):
 
 - `BCEWithLogitsLoss` เหมาะกับ multi-label เพราะคำนวณแยกแต่ละ class ได้ตรงโจทย์
 - ใช้ `Adam` ที่ learning rate `2e-4`
-- เทรน 100 epoch ในโน้ตบุ๊กตัวอย่าง (งานจริงแนะนำมี early stopping)
+- เทรน 100 epoch 
 
 ### 4.8 ประเมินผลด้วย Micro F1
 
@@ -334,23 +299,14 @@ print("Micro F1:", f1_micro)
 
 - แปลง logits ด้วย sigmoid ให้เป็นความน่าจะเป็นรายคลาส
 - threshold 0.5 เพื่อเปลี่ยนเป็น 0/1
-- ใช้ `micro F1` เพราะเหมาะกับงาน multi-label และช่วยสะท้อนภาพรวมทั้งระบบ
+- ใช้ `micro F1` เพราะเหมาะกับงาน multi-label 
+- โดย model TextCNN มีค่าประสิทธิภาพโดยประมาณอยู่ที่ 0.848
 
-## 5) สรุปแบบใช้งานจริง
+## 5. สรุปแบบใช้งานจริง
 
-ถ้าจะเล่าแบบตรงๆ สำหรับโปรเจกต์นี้:
+- EDA ช่วยในการเห็นปัญหา class imbalance และธรรมชาติของ multi-label
+- tokenizer แบบ BERT ช่วยให้ดีขึ้น
+- TextCNN มีค่าประสิทธิภาพอยู่ที่ประมาณ 0.848
 
-- EDA ช่วยมากในการเห็นปัญหา class imbalance และธรรมชาติของ multi-label
-- TextCNN เป็น baseline ที่ดี เร็ว และตีความ flow ได้ง่าย
-- tokenizer แบบ BERT ช่วยเรื่อง vocabulary coverage ให้ดีขึ้น
-
-ถ้าจะต่อยอด แนะนำลอง:
-
-1. ปรับ threshold รายคลาสแทนใช้ 0.5 ค่าเดียว
-2. ใช้ class weights หรือ focal loss ลดผลกระทบ imbalance
-3. เพิ่ม validation split + early stopping
-4. เทียบกับ transformer-based classifier แบบ fine-tuning เต็มตัว
 
 ---
-
-ถ้าอยากให้ผมต่อภาค 2 แบบลงลึกเรื่องการจูนโมเดล (เช่น kernel/filter/dropout/lr) เดี๋ยวจัดเป็น checklist ที่เอาไปลองรันได้ทันทีให้ได้เลย
