@@ -1,11 +1,12 @@
-# Tutorial: จับชุดข้อมูล arXiv มา EDA + ทำ Multi-label Classification ด้วย TextCNN
+# จับชุดข้อมูล arXiv มา EDA + ทำ Multi-label Classification ด้วย TextCNN
+# 660710714 นายธนินท์ ตั้งกอบลาภ
 
 โปรเจกต์นี้เป็นงานสาย NLP ที่ทำครบ flow ตั้งแต่ดูข้อมูล, วิเคราะห์เชิงสถิติ, จนเทรนโมเดล TextCNN สำหรับทำนายหลาย label พร้อมกัน (multi-label text classification) จาก abstract ของงานวิจัย
 
 ## ในโปรเจกต์มีอะไรบ้าง
 
 - `ArXiv_MLTC_Datasets_EDA_660710714 (1).ipynb`: โน้ตบุ๊ก EDA
-- `TextCNN (1).ipynb`: โน้ตบุ๊กเทรนโมเดล TextCNN
+- `TextCNN (1).ipynb`: โน้ตบุ๊ก Train โมเดล TextCNN
 - `arxiv34k6L.csv`: ข้อมูลดิบจาก dataset
 - `data.csv`: ข้อมูลที่ผ่านขั้นตอนเตรียมแล้วบางส่วน
 
@@ -83,8 +84,6 @@ flowchart TD
 - ปลายทางเป็น multi-label เลยใช้ **BCEWithLogitsLoss**
 
 ## 4. Code แต่ละส่วน + คำอธิบายละเอียด
-
-ด้านล่างคือบล็อกโค้ดหลักๆ ที่ใช้จริงในโน้ตบุ๊ก พร้อมอธิบายว่ามันทำอะไรและทำไปเพื่ออะไร
 
 ### 4.1 โหลดข้อมูลและเตรียม label
 
@@ -308,8 +307,6 @@ print("Micro F1:", f1_micro)
 
 ### 4.9 กราฟแสดง loss และ accuracy
 
-อันนี้คือโค้ดสำหรับเทรนแบบเก็บ history แล้วพล็อตกราฟออกมาเลยในโน้ตบุ๊ก (ใช้ต่อจากโมเดลเดิมได้ทันที)
-
 ```python
 import numpy as np
 import matplotlib.pyplot as plt
@@ -380,16 +377,16 @@ plt.show()
 
 ![Training loss and accuracy](images/loss_graph.png)
 
-อธิบายแบบเร็ว:
+อธิบาย:
 
 - ฝั่งซ้ายคือ loss ต่อ epoch: ยิ่งลดลงยิ่งดี
 - ฝั่งขวาคือ exact-match accuracy: จะนับว่าถูกก็ต่อเมื่อทาย label ครบทุกตัวของ sample นั้น
 - ถ้า loss ลงแต่ accuracy ไม่ขึ้น แปลว่า threshold หรือการกระจายคลาสอาจยังเป็นคอขวด
-- จากรูปนี้เห็นว่า loss ค่อยๆ ลดลง และ accuracy ค่อยๆ ไต่ขึ้น แปลว่าโมเดลเรียนรู้ได้ต่อเนื่องและยังไม่เห็นอาการหลุดหนักระหว่างเทรน
+- จากรูปนี้เห็นว่า loss ค่อยๆ ลดลง และ accuracy ค่อยๆ ไต่ขึ้น แปลว่าโมเดลเรียนรู้ได้ต่อเนื่องและยังไม่เห็นอาการหลุดหนักระหว่าง Train
 
 ### 4.10 ประเมินโมเดล: accuracy และ confusion matrix
 
-โค้ดนี้จะสรุปผลที่อ่านง่ายขึ้น โดยมี accuracy 2 มุม + confusion matrix รายคลาส
+Code นี้จะสรุปผลที่อ่านง่ายขึ้น โดยมี accuracy 2 มุม + confusion matrix รายคลาส
 
 ```python
 import seaborn as sns
@@ -453,7 +450,7 @@ plt.show()
 
 ![Confusion matrix per class](images/confision_matrix.png)
 
-อธิบายแบบเข้าใจง่าย:
+อธิบาย:
 
 - Exact-match accuracy โหดกว่า เพราะต้องถูกทั้งชุด label ของ sample นั้น
 - Label-wise accuracy ใจดีกว่า เอาความถูกทีละ label มารวมกัน
@@ -462,8 +459,6 @@ plt.show()
 - จากรูปนี้คลาส cs.CV และ cs.LG ค่าทายถูกฝั่ง True 1 ค่อนข้างดี ส่วน stat.ML ยังมี FN สูงพอสมควร เลยเป็นคลาสที่ควรโฟกัสปรับเพิ่ม
 
 ## 5. วิธีคำนวณจำนวนพารามิเตอร์ของโมเดล
-
-อันนี้เป็นวิธีนับพารามิเตอร์ของ TextCNN ตัวนี้แบบมือ และดูว่าพารามิเตอร์ไปกองอยู่ตรงไหนเยอะสุด
 
 ### 5.1 สูตรที่ใช้
 
@@ -474,7 +469,7 @@ plt.show()
 
 ### 5.2 แทนค่าจากโมเดลนี้
 
-ค่าจากโค้ด:
+ค่าจาก Code :
 
 - vocab_size = 30522 (จาก bert-base-uncased)
 - embed_dim = 128
@@ -508,12 +503,12 @@ plt.show()
 
 - 3,906,816 + 38,500 + 51,300 + 64,100 + 1,204 = 4,061,920
 
-สรุปสั้นๆ:
+สรุป:
 
 - พารามิเตอร์ส่วนใหญ่จะอยู่ที่ Embedding
 - ถ้าอยากลดขนาดโมเดล ให้เริ่มจากลด embed_dim หรือใช้ vocab เล็กลง
 
-### 5.3 เช็กจำนวนพารามิเตอร์ด้วยโค้ด
+### 5.3 เช็กจำนวนพารามิเตอร์ด้วย Code 
 
 ```python
 total_params = sum(p.numel() for p in model.parameters())
