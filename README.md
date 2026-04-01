@@ -376,11 +376,16 @@ plt.tight_layout()
 plt.show()
 ```
 
+ภาพผลลัพธ์กราฟ loss และ accuracy:
+
+![Training loss and accuracy](loss_graph.png)
+
 อธิบายแบบเร็ว:
 
 - ฝั่งซ้ายคือ loss ต่อ epoch: ยิ่งลดลงยิ่งดี
 - ฝั่งขวาคือ exact-match accuracy: จะนับว่าถูกก็ต่อเมื่อทาย label ครบทุกตัวของ sample นั้น
 - ถ้า loss ลงแต่ accuracy ไม่ขึ้น แปลว่า threshold หรือการกระจายคลาสอาจยังเป็นคอขวด
+- จากรูปนี้เห็นว่า loss ค่อยๆ ลดลง และ accuracy ค่อยๆ ไต่ขึ้น แปลว่าโมเดลเรียนรู้ได้ต่อเนื่องและยังไม่เห็นอาการหลุดหนักระหว่างเทรน
 
 ### 4.10 ประเมินโมเดล: accuracy และ confusion matrix
 
@@ -444,12 +449,17 @@ plt.tight_layout()
 plt.show()
 ```
 
+ภาพผลลัพธ์ confusion matrix:
+
+![Confusion matrix per class](confision_matrix.png)
+
 อธิบายแบบเข้าใจง่าย:
 
 - `Exact-match accuracy` โหดกว่า เพราะต้องถูกทั้งชุด label ของ sample นั้น
 - `Label-wise accuracy` ใจดีกว่า เอาความถูกทีละ label มารวมกัน
 - confusion matrix จะบอกต่อคลาสว่าโมเดลพลาดแบบไหนบ่อย
 - ถ้าเห็น FN เยอะในคลาสไหน แปลว่าโมเดลมักมองไม่เห็นคลาสนั้น (ควรแก้ class imbalance หรือปรับ threshold)
+- จากรูปนี้คลาส `cs.CV` และ `cs.LG` ค่าทายถูกฝั่ง True 1 (ช่องขวาล่าง) ค่อนข้างดี ส่วน `stat.ML` ยังมี FN สูงพอสมควร เลยเป็นคลาสที่ควรโฟกัสปรับเพิ่ม
 
 ## 5. วิธีคำนวณจำนวนพารามิเตอร์ของโมเดล
 
