@@ -15,10 +15,10 @@
 
 ภาพรวมแบบสั้รๆ:
 
-- Input หลัก: `Abstracts` (ข้อความ abstract)
-- Output หลัก: หมวดหมู่ในรูปแบบหลายป้าย เช่น `['cs.LG', 'cs.CV']`
+- Input หลัก: Abstracts (ข้อความ abstract)
+- Output หลัก: หมวดหมู่ในรูปแบบหลายป้าย เช่น ['cs.LG', 'cs.CV']
 - เป็นงาน multi-label: 1 abstract มีได้มากกว่า 1 label
-- โครงสร้าง label มีความเป็นลดับชั้น (เช่น parent: `cs`, `stat` และ leaf class ย่อย)
+- โครงสร้าง label มีความเป็นลดับชั้น (เช่น parent: cs, stat และ leaf class ย่อย)
 
 
 ## 2. สรุป EDA (อิงจากไฟล์ EDA)
@@ -29,7 +29,7 @@
 
 1. เช็ก missing values ทั้งตาราง
 2. ดู class distribution แบบดิบ
-3. แยก label ที่ซ้อนกันออกมาเป็น `clean_labels`
+3. แยก label ที่ซ้อนกันออกมาเป็น clean_labels
 4. นับจำนวนแต่ละ class
 5. ดูสถิติการกระจาย: mean, median, std, percentile
 6. วาด cumulative coverage ว่าคลาสบนๆ ครอบคลุมข้อมูลกี่ %
@@ -44,14 +44,14 @@
 
 - ข้อมูลมี class imbalance ค่อนข้างชัด (บางคลาสเยอะมาก บางคลาสน้อย)
 - หนึ่งตัวอย่างไม่ได้มีแค่ label เดียวตลอด
-- ค่า Label Cardinality ประมาณ `1.52` หมายถึงโดยเฉลี่ยหนึ่ง row มีประมาณ 1-2 label
+- ค่า Label Cardinality ประมาณ 1.52 หมายถึงโดยเฉลี่ยหนึ่ง row มีประมาณ 1-2 label
 - จากกราฟ co-occurrence เห็นคู่ label ที่ชอบมาด้วยกัน
 - PCA 2 มิติช่วยเห็นภาพรวม แต่ยังแยกคลัสเตอร์แบบคมๆ ไม่ได้
 
 
 ## 3. โครงสร้างโมเดล (TextCNN)
 
-โมเดลที่ใช้เป็น TextCNN แบบคลาสสิก แต่เอา input จาก tokenizer ของ `bert-base-uncased` เพื่อให้ได้ token id ที่มาตรฐาน
+โมเดลที่ใช้เป็น TextCNN แบบคลาสสิก แต่เอา input จาก tokenizer ของ bert-base-uncased เพื่อให้ได้ token id ที่มาตรฐาน
 
 ### โครงสร้างแบบคร่าว ๆ
 
@@ -80,7 +80,7 @@ flowchart TD
 
 - Conv หลายขนาด kernel ช่วยจับ pattern ของคำหลายช่วง
 - Max pooling ดึง feature ที่เด่นสุดของแต่ละ filter
-- ปลายทางเป็น multi-label เลยใช้ `BCEWithLogitsLoss`
+- ปลายทางเป็น multi-label เลยใช้ **BCEWithLogitsLoss**
 
 ## 4. Code แต่ละส่วน + คำอธิบายละเอียด
 
@@ -102,9 +102,9 @@ labels = df["clean_labels"]
 
 อธิบาย:
 
-- `dropna` กันแถวที่ไม่มี label ออกก่อน จะได้ไม่พังตอนเทรน
-- `ast.literal_eval` แปลง string ที่หน้าตาเหมือน list ให้เป็น list จริง
-- แยก `texts` กับ `labels` ให้ชัดไว้ใช้ในขั้นถัดไป
+- dropna กันแถวที่ไม่มี label ออกก่อน จะได้ไม่พังตอนเทรน
+- ast.literal_eval แปลง string ที่หน้าตาเหมือน list ให้เป็น list จริง
+- แยก texts กับ labels ให้ชัดไว้ใช้ในขั้นถัดไป
 
 ### 4.2 แปลง label เป็นเวกเตอร์ multi-hot
 
@@ -119,8 +119,8 @@ num_classes = len(mlb.classes_)
 อธิบาย:
 
 - งาน multi-label ต้องให้โมเดลทำนายทีละ class แบบ 0/1
-- `fit_transform` จะเปลี่ยน label list ของแต่ละแถวเป็นเวกเตอร์ เช่น `[1,0,1,0]`
-- `num_classes` เอาไปกำหนดขนาด output layer
+- fit_transform จะเปลี่ยน label list ของแต่ละแถวเป็นเวกเตอร์ เช่น [1,0,1,0]
+- num_classes เอาไปกำหนดขนาด output layer
 
 ### 4.3 Tokenization
 
@@ -142,8 +142,8 @@ encodings = tokenizer(
 อธิบาย:
 
 - ใช้ tokenizer ของ BERT เพื่อให้ token id เสถียรและมาตรฐาน
-- `padding=True` ทำให้ความยาวทุกตัวอย่างเท่ากัน
-- `truncation=True` ตัดข้อความยาวเกิน `MAX_LEN` เพื่อควบคุม memory และเวลาเทรน
+- padding=True ทำให้ความยาวทุกตัวอย่างเท่ากัน
+- truncation=True ตัดข้อความยาวเกิน MAX_LEN เพื่อควบคุม memory และเวลาเทรน
 
 ### 4.4 สร้าง Dataset class สำหรับ PyTorch
 
@@ -168,7 +168,7 @@ class PaperDataset(Dataset):
 อธิบาย:
 
 - ทำให้ DataLoader ดึงข้อมูลเป็น batch ได้สะดวก
-- label ต้องเป็น `float()` เพราะ `BCEWithLogitsLoss` ต้องการค่า float
+- label ต้องเป็น float() เพราะ **BCEWithLogitsLoss** ต้องการค่า float
 - ทุกครั้งที่เรียก index จะได้ทั้ง input และ label กลับมา
 
 ### 4.5 แบ่ง train/test และทำ DataLoader
@@ -199,7 +199,7 @@ test_loader = DataLoader(test_dataset, batch_size=16)
 อธิบาย:
 
 - split 80/20 สำหรับ train/test
-- `shuffle=True` เฉพาะ train เพื่อกันโมเดลจำลำดับข้อมูล ไม่ทำใน Test set เพราะป้องกันการรั่วลองผลเฉลย
+- shuffle=True เฉพาะ train เพื่อกันโมเดลจำลำดับข้อมูล ไม่ทำใน Test set เพราะป้องกันการรั่วลองผลเฉลย
 - batch size ใช้ 16 ตามทรัพยากรทั่วไปในงานโน้ตบุ๊ก
 
 ### 4.6 นิยามโมเดล TextCNN
@@ -234,12 +234,12 @@ class TextCNN(nn.Module):
 อธิบาย:
 
 - Embedding แปลง token id เป็น dense vector
-- `permute(0,2,1)` เพื่อจัดมิติให้เข้ากับ `Conv1d`
+- permute(0,2,1) เพื่อจัดมิติให้เข้ากับ Conv1d
 - Conv 3 ชุด (k=3,4,5) จับ n-gram หลายแบบ
 - max-over-time pooling ดึง feature ที่ส่งผลที่สุดของแต่ละ filter
 - concat แล้วส่งเข้า linear เพื่อได้ logits ของทุก class
 
-### 4.7 ตั้งค่า loss/optimizer แล้วเทรน
+### 4.7 ตั้งค่า loss แล้วเทรน
 
 ```python
 import torch.optim as optim
@@ -274,8 +274,8 @@ for epoch in range(100):
 
 อธิบาย:
 
-- `BCEWithLogitsLoss` เหมาะกับ multi-label เพราะคำนวณแยกแต่ละ class ได้ตรงโจทย์
-- ใช้ `Adam` ที่ learning rate `2e-4`
+- **BCEWithLogitsLoss** เหมาะกับ multi-label เพราะคำนวณแยกแต่ละ class ได้ตรงโจทย์
+- ใช้ Adam ที่ learning rate = 2e-4
 - เทรน 100 epoch 
 
 ### 4.8 ประเมินผลด้วย Micro F1
@@ -303,10 +303,10 @@ print("Micro F1:", f1_micro)
 
 - แปลง logits ด้วย sigmoid ให้เป็นความน่าจะเป็นรายคลาส
 - threshold 0.5 เพื่อเปลี่ยนเป็น 0/1
-- ใช้ `micro F1` เพราะเหมาะกับงาน multi-label 
+- ใช้ micro F1 เพราะเหมาะกับงาน multi-label 
 - โดย model TextCNN มีค่าประสิทธิภาพโดยประมาณอยู่ที่ 0.848
 
-## 5. สรุปแบบใช้งานจริง
+## 5. สรุปภาพรวม
 
 - EDA ช่วยในการเห็นปัญหา class imbalance และธรรมชาติของ multi-label
 - tokenizer แบบ BERT ช่วยให้ดีขึ้น
