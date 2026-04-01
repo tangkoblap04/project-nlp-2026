@@ -55,7 +55,7 @@
 
 ### โครงสร้างแบบคร่าว ๆ
 
-![โครงสร้างแบบคร่าว ๆ](structure.png)
+![โครงสร้างแบบคร่าว ๆ](images/structure.png)
 
 ### โครงสร้างแบบเห็นภาพ
 
@@ -378,7 +378,7 @@ plt.show()
 
 ภาพผลลัพธ์กราฟ loss และ accuracy:
 
-![Training loss and accuracy](loss_graph.png)
+![Training loss and accuracy](images/loss_graph.png)
 
 อธิบายแบบเร็ว:
 
@@ -451,15 +451,15 @@ plt.show()
 
 ภาพผลลัพธ์ confusion matrix:
 
-![Confusion matrix per class](confision_matrix.png)
+![Confusion matrix per class](images/confision_matrix.png)
 
 อธิบายแบบเข้าใจง่าย:
 
-- `Exact-match accuracy` โหดกว่า เพราะต้องถูกทั้งชุด label ของ sample นั้น
-- `Label-wise accuracy` ใจดีกว่า เอาความถูกทีละ label มารวมกัน
+- Exact-match accuracy โหดกว่า เพราะต้องถูกทั้งชุด label ของ sample นั้น
+- Label-wise accuracy ใจดีกว่า เอาความถูกทีละ label มารวมกัน
 - confusion matrix จะบอกต่อคลาสว่าโมเดลพลาดแบบไหนบ่อย
 - ถ้าเห็น FN เยอะในคลาสไหน แปลว่าโมเดลมักมองไม่เห็นคลาสนั้น (ควรแก้ class imbalance หรือปรับ threshold)
-- จากรูปนี้คลาส `cs.CV` และ `cs.LG` ค่าทายถูกฝั่ง True 1 (ช่องขวาล่าง) ค่อนข้างดี ส่วน `stat.ML` ยังมี FN สูงพอสมควร เลยเป็นคลาสที่ควรโฟกัสปรับเพิ่ม
+- จากรูปนี้คลาส cs.CV และ cs.LG ค่าทายถูกฝั่ง True 1 ค่อนข้างดี ส่วน stat.ML ยังมี FN สูงพอสมควร เลยเป็นคลาสที่ควรโฟกัสปรับเพิ่ม
 
 ## 5. วิธีคำนวณจำนวนพารามิเตอร์ของโมเดล
 
@@ -467,52 +467,51 @@ plt.show()
 
 ### 5.1 สูตรที่ใช้
 
-- Embedding: `vocab_size x embed_dim`
-- Conv1d: `out_channels x (in_channels x kernel_size + 1)`
-- Linear: `out_features x (in_features + 1)`
+- Embedding: vocab_size x embed_dim
+- Conv1d: out_channels x (in_channels x kernel_size + 1)
+- Linear: out_features x (in_features + 1)
 
-หมายเหตุ: `+1` คือ bias
 
 ### 5.2 แทนค่าจากโมเดลนี้
 
 ค่าจากโค้ด:
 
-- `vocab_size = 30522` (จาก `bert-base-uncased`)
-- `embed_dim = 128`
-- Conv 3 ชั้น: `out_channels = 100`, `kernel_size = 3,4,5`
-- Linear: `in_features = 300`, `out_features = num_classes`
+- vocab_size = 30522 (จาก bert-base-uncased)
+- embed_dim = 128
+- Conv 3 ชั้น: out_channels = 100, kernel_size = 3,4,5
+- Linear: in_features = 300, out_features = num_classes
 
 คำนวณ:
 
 1. Embedding
 
-- `30522 x 128 = 3,906,816`
+- 30522 x 128 = 3,906,816
 
 2. Conv1d (k=3)
 
-- `100 x (128 x 3 + 1) = 100 x 385 = 38,500`
+- 100 x (128 x 3 + 1) = 100 x 385 = 38,500
 
 3. Conv1d (k=4)
 
-- `100 x (128 x 4 + 1) = 100 x 513 = 51,300`
+- 100 x (128 x 4 + 1) = 100 x 513 = 51,300
 
 4. Conv1d (k=5)
 
-- `100 x (128 x 5 + 1) = 100 x 641 = 64,100`
+- 100 x (128 x 5 + 1) = 100 x 641 = 64,100
 
 5. Linear
 
-- `num_classes x (300 + 1)`
-- ถ้า `num_classes = 4` จะได้ `4 x 301 = 1,204`
+- num_classes x (300 + 1)
+- ถ้า num_classes = 4 จะได้ 4 x 301 = 1,204
 
-รวมทั้งหมด (กรณี 4 คลาส):
+รวมทั้งหมด :
 
-- `3,906,816 + 38,500 + 51,300 + 64,100 + 1,204 = 4,061,920`
+- 3,906,816 + 38,500 + 51,300 + 64,100 + 1,204 = 4,061,920
 
 สรุปสั้นๆ:
 
 - พารามิเตอร์ส่วนใหญ่จะอยู่ที่ Embedding
-- ถ้าอยากลดขนาดโมเดล ให้เริ่มจากลด `embed_dim` หรือใช้ vocab เล็กลง
+- ถ้าอยากลดขนาดโมเดล ให้เริ่มจากลด embed_dim หรือใช้ vocab เล็กลง
 
 ### 5.3 เช็กจำนวนพารามิเตอร์ด้วยโค้ด
 
