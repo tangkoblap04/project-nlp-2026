@@ -27,8 +27,6 @@
 
 ## 2. สรุป EDA (อิงจากไฟล์ EDA)
 
-ฝั่ง EDA มีการเช็กหลายมุมพอสมควร ตั้งแต่ missing values ไปจนถึงความสัมพันธ์ระหว่าง label
-
 ### สิ่งที่ทำใน EDA 
 
 1. เช็ก missing values ทั้งตาราง
@@ -201,7 +199,7 @@ test_loader = DataLoader(test_dataset, batch_size=16)
 อธิบาย:
 
 - split 80/20 สำหรับ train/test
-- shuffle=True เฉพาะ train เพื่อกันโมเดลจำลำดับข้อมูล ไม่ทำใน Test set เพราะป้องกันการรั่วลองผลเฉลย
+- shuffle=True เฉพาะ train เพื่อกันโมเดลจำลำดับข้อมูล ไม่ทำใน Test set เพราะป้องกันกรรั่วลองผลเฉลย
 - batch size ใช้ 16 ตามทรัพยากรทั่วไปในงานโน้ตบุ๊ก
 
 ### 4.6 นิยามโมเดล TextCNN
@@ -238,7 +236,7 @@ class TextCNN(nn.Module):
 - Embedding แปลง token id เป็น dense vector
 - permute(0,2,1) เพื่อจัดมิติให้เข้ากับ Conv1d เพราะ Conv1d ต้องการข้อมูลเข้าเป็นมิติดังกล่าว
 - Conv 3 ชุด (k=3,4,5) จับ n-gram หลายแบบ
-- max-over-time pooling ดึง feature ที่ส่งผลที่สุดของแต่ละ filter
+- max-over-time pooling ดึง feature ที่ส่งผลทีสุดของแต่ละ filter
 - concat แล้วส่งเข้า linear เพื่อได้ logits ของทุก class
 
 ### 4.7 ตั้งค่า loss แล้วเทรน
@@ -383,7 +381,7 @@ plt.show()
 อธิบาย:
 
 - ฝั่งซ้ายคือ loss ต่อ epoch: ยิ่งลดลงยิ่งดี
-- ฝั่งขวาคือ exact-match accuracy: จะนับว่าถูกก็ต่อเมื่อทาย label ครบทุกตัวของ sample นั้น
+- ฝั่งขวาคือ exact-match accuracy: จะนับว่าถูกก็ต่อเมื่อทาย label ครบทุกตัวของ rwo นั้น ๆ
 - ถ้า loss ลงแต่ accuracy ไม่ขึ้น แปลว่า threshold หรือการกระจายคลาสอาจยังเป็นลักษณะข้อมูลที่มีการกระจุกตัว หรือ Flow ไม่ค่อยดี (คอขวด)
 - จากรูปนี้เห็นว่า loss ค่อยๆ ลดลง และ accuracy ค่อยๆ ไต่ขึ้น แปลว่าโมเดลเรียนรู้ได้ต่อเนื่อง
 
