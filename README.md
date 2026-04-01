@@ -1,17 +1,15 @@
 # จับชุดข้อมูล arXiv มา EDA + ทำ Multi-label Classification ด้วย TextCNN
 # 660710714 นายธนินท์ ตั้งกอบลาภ
 
-โปรเจกต์นี้เป็นงานสาย NLP ที่ทำครบ flow ตั้งแต่ดูข้อมูล, วิเคราะห์เชิงสถิติ, จนเทรนโมเดล TextCNN สำหรับทำนายหลาย label พร้อมกัน (multi-label text classification) จาก abstract ของงานวิจัย
-
 - แหลงข้อมูลอ้างอิงค์ (ที่มาของ datasets) : https://www.kaggle.com/datasets/kelixirr/arxiv-multi-label-text-classification-datasets
 - ที่มาของปัญหา : เนื่องจากในการจำแนกหรือทำงานที่เกี่ยวกับเอกสารที่มีหลายหัวข้อนั่นมีความศับซ้อน และอาจจะมีหัวข้อย่อย ทำให้การแยกด้วยความสามาารถของมนุษย?นั้นอาจจะเป็นไปได้ยาก
 
 ## ในโปรเจกต์มีอะไรบ้าง
 
-- `ArXiv_MLTC_Datasets_EDA_660710714 (1).ipynb`: โน้ตบุ๊ก EDA
-- `TextCNN (1).ipynb`: โน้ตบุ๊ก Train โมเดล TextCNN
-- `arxiv34k6L.csv`: ข้อมูลดิบจาก dataset
-- `data.csv`: ข้อมูลที่ผ่านขั้นตอนเตรียมแล้วบางส่วน
+- `ArXiv_MLTC_Datasets_EDA_660710714 (1).ipynb`: ไฟล์โน้ตบุ๊ก สำหรับการทำ EDA
+- `TextCNN (1).ipynb`: ไฟล์โน้ตบุ๊ก Train โมเดล TextCNN
+- `arxiv34k6L.csv`: ไฟล์ข้อมูลดิบจาก dataset
+- `data.csv`: ไฟล์ข้อมูลที่ผ่านขั้นตอนเตรียมแล้วบางส่วน (ต่อจาก EDA)
 
 ## 1. Dataset
 
@@ -42,7 +40,7 @@
 11. สรุป distribution ระดับ parent category
 12. ลองทำ TF-IDF + PCA เพื่อดูการกระจายเชิงโครงสร้าง
 
-### ผลสรุปสำคัญจากการทำ EDA
+### สรุปผลจากการทำ EDA
 
 - ข้อมูลมี class imbalance (บางคลาสเยอะมาก บางคลาสน้อย)
 - หนึ่งตัวอย่างไม่ได้มีแค่ label เดียวตลอด
@@ -53,13 +51,13 @@
 
 ## 3. โครงสร้างโมเดล (TextCNN)
 
-โมเดลที่ใช้เป็น TextCNN แบบคลาสสิก แต่เอา input จาก tokenizer ของ bert-base-uncased เพื่อให้ได้ token id ที่มาตรฐาน
+โมเดลที่ใช้เป็น TextCNN แบบคลาสสิก แต่เอา input จาก tokenizer ของ bert-base-uncased เพื่อให้ได้ token id ที่เป็นมาตรฐานมาใช้ในการ train model
 
 ### โครงสร้างแบบคร่าว ๆ
 
 ![โครงสร้างแบบคร่าว ๆ](images/structure.png)
 
-### โครงสร้าง
+### โครงสร้าง (plot ด้วย mermaid)
 
 ```mermaid
 flowchart TD
@@ -80,9 +78,9 @@ flowchart TD
 
 สรุป:
 
-- Conv หลายขนาด kernel ช่วยจับ pattern ของคำหลายช่วง
-- Max pooling ดึง feature ที่เด่นสุดของแต่ละ filter
-- ปลายทางเป็น multi-label เลยใช้ **BCEWithLogitsLoss**
+- Conv หลายขนาด kernel ช่วยจับ pattern ของคำได้หลายช่วง
+- Max pooling ดึง feature ที่เด่นที่สุดแนแต่ละ filter
+- ปลายทางเป็น multi-label เลยตัดสินใจใช้ **BCEWithLogitsLoss**
 
 ## 4. Code แต่ละส่วน + คำอธิบายละเอียด
 
@@ -104,7 +102,7 @@ labels = df["clean_labels"]
 
 - dropna เพื่อป้องกันแถวที่ไม่มี label ออก จะได้ไม่พังตอนเทรน เนื่องจาก Code การทำงานไม่สามารถทำงานกับข้อมูลที่เป็น Null ได้
 - ast.literal_eval แปลง string ที่หน้าตาเหมือน list ให้เป็น list จริง ในลักษณะของโครงสร้างของ target ที่ได้อธิบายไป
-- แยก texts กับ labels ให้ชัดไว้ใช้ในขั้นตอนถัดไป
+- แยก texts กับ labels ให้ชัด เพื่อไว้ใช้ในขั้นตอนถัดไป
 
 ### 4.2 แปลง label เป็นเวกเตอร์ multi-hot
 
@@ -118,7 +116,7 @@ num_classes = len(mlb.classes_)
 
 อธิบาย:
 
-- งานจำพวก multi-label ต้องให้โมเดลทำนายทีละ class แบบ 0/1
+- งานจำพวก multi-label เราจะต้องให้โมเดลทำนายทีละ class แบบ 0/1
 - fit_transform จะเปลี่ยน label list ของแต่ละแถวเป็นเวกเตอร์ ตัวอย่างเช่น [1,0,1,0]
 - num_classes เอาไปกำหนดขนาด output layer
 
@@ -169,7 +167,7 @@ class PaperDataset(Dataset):
 
 - ทำให้ DataLoader ดึงข้อมูลเป็น batch ได้ดีขึ้น
 - label ต้องเป็น float() เพราะ **BCEWithLogitsLoss** ต้องการค่า float
-- ทุกครั้งที่เรียก index จะดึงทั้ง input และ label กลับมา
+- ทุกครั้งที่เรียก index จะดึงทั้ง input และ label กลับมา (__getitem__)
 
 ### 4.5 แบ่ง train/test และทำ DataLoader
 
@@ -198,9 +196,9 @@ test_loader = DataLoader(test_dataset, batch_size=16)
 
 อธิบาย:
 
-- split 80/20 สำหรับ train/test
+- พิจารณาทำ train test split ด้วยอัตรส่วน 80/20 สำหรับ train/test
 - shuffle=True เฉพาะ train เพื่อกันโมเดลจำลำดับข้อมูล ไม่ทำใน Test set เพราะป้องกันกรรั่วลองผลเฉลย
-- batch size ใช้ 16 ตามทรัพยากรทั่วไปในงานโน้ตบุ๊ก
+- batch size ใช้ 16 พิจารณาจากทรัพย์ยากรของ notebook
 
 ### 4.6 นิยามโมเดล TextCNN
 
@@ -276,7 +274,7 @@ for epoch in range(100):
 
 - **BCEWithLogitsLoss** เหมาะกับ multi-label เพราะคำนวณแยกแต่ละ class ได้ตรงตามที่คาดหวังไว้ตามหัวข้องาน
 - ใช้ Adam ที่ learning rate = 2e-4
-- เทรน 100 epoch 
+- เทรน 100 epoch เพื่อให้เห็นแนวโน้มการเรียนรู้ระยะยาวของ model
 
 ### 4.8 ประเมินผลด้วย Micro F1
 
@@ -303,7 +301,7 @@ print("Micro F1:", f1_micro)
 
 - แปลง logits ด้วย sigmoid ให้เป็นความน่าจะเป็นรายคลาส
 - threshold 0.5 เพื่อเปลี่ยนเป็น 0/1 และเป็นเกรฑ์การตัดข้อมูล
-- ใช้ micro F1 เพราะเหมาะกับงาน multi-label 
+- ใช้ micro F1 เพราะเหมาะกับงาน multi-label และเหมาะสมกับปัญหา Class imbalance 
 - โดย model TextCNN มีค่าประสิทธิภาพโดยประมาณอยู่ที่ 0.848
 
 ### 4.9 กราฟแสดง loss และ accuracy
@@ -380,14 +378,14 @@ plt.show()
 
 อธิบาย:
 
-- ฝั่งซ้ายคือ loss ต่อ epoch: ยิ่งลดลงยิ่งดี
-- ฝั่งขวาคือ exact-match accuracy: จะนับว่าถูกก็ต่อเมื่อทาย label ครบทุกตัวของ rwo นั้น ๆ
+- ฝั่งซ้ายคือ loss ต่อ epoch โดยยิ่งลดลงยิ่งดี
+- ฝั่งขวาคือ exact-match accuracy จะนับว่าทายถูกก็ต่อเมื่อทาย label ครบทุกตัวของ rwo นั้น ๆ 
 - ถ้า loss ลงแต่ accuracy ไม่ขึ้น แปลว่า threshold หรือการกระจายคลาสอาจยังเป็นลักษณะข้อมูลที่มีการกระจุกตัว หรือ Flow ไม่ค่อยดี (คอขวด)
-- จากรูปนี้เห็นว่า loss ค่อยๆ ลดลง และ accuracy ค่อยๆ ไต่ขึ้น แปลว่าโมเดลเรียนรู้ได้ต่อเนื่อง
+- จากรูปนี้เห็นว่า loss ค่อยๆ ลดลง และ accuracy ค่อยๆ ดีขึ้น แปลว่าโมเดลเรียนรู้ได้ต่อเนื่อง
 
 ### 4.10 ประเมินโมเดล: accuracy และ confusion matrix
 
-Code นี้จะสรุปผลที่อ่านง่ายขึ้น โดยมี accuracy 2 มุม + confusion matrix รายคลาส
+Code นี้จะสรุปผลที่อ่านง่าย โดยมี accuracy 2 มุม + confusion matrix ราย class
 
 ```python
 import seaborn as sns
@@ -456,8 +454,8 @@ plt.show()
 - Exact-match accuracy โหดกว่า เพราะต้องถูกทั้งชุด label ของ sample นั้น
 - Label-wise accuracy ใจดีกว่า เอาความถูกทีละ label มารวมกัน
 - confusion matrix จะบอกต่อคลาสว่าโมเดลพลาดแบบไหนบ่อย
-- ถ้าเห็น FN เยอะในคลาสไหน แปลว่าโมเดลมักมองไม่เห็นคลาสนั้น 
-- จากรูปนี้คลาส cs.CV และ cs.LG ค่าทายถูกฝั่ง True 1 ค่อนข้างดี ส่วน stat.ML ยังมี FN สูงพอสมควร เลยเป็นคลาสที่ควรโฟกัสปรับเพิ่ม
+- ถ้าเห็น FN เยอะในคลาสไหน แปลว่าโมเดลมักมองไม่เห็นหรือไม่ค่อยทาย class นั้น 
+- จากรูปนี้คลาส cs.CV และ cs.LG ค่าทายถูกฝั่ง True 1 ค่อนข้างดี ส่วน stat.ML ยังมี FN สูงพอสมควร เลยเป็นคลาสที่ควรโฟกัส
 
 ## 5. วิธีคำนวณจำนวนพารามิเตอร์ของโมเดล
 
@@ -507,7 +505,6 @@ plt.show()
 สรุป:
 
 - พารามิเตอร์ส่วนใหญ่จะอยู่ที่ Embedding
-- ถ้าอยากลดขนาดโมเดล ให้เริ่มจากลด embed_dim หรือใช้ vocab เล็กลง
 
 ### 5.3 เช็กจำนวนพารามิเตอร์ด้วย Code 
 
@@ -523,4 +520,4 @@ print("Trainable params:", trainable_params)
 
 - EDA ช่วยในการเห็นปัญหา class imbalance และธรรมชาติของ multi-label
 - tokenizer แบบ BERT ช่วยให้ดีขึ้น
-- TextCNN มีค่าประสิทธิภาพอยู่ที่ประมาณ 0.848
+- TextCNN มีค่าประสิทธิภาพอยู่ที่ประมาณ 0.848 โดยสามารถเรียนรู้และจับความสัมพันธ์ได้ดี
