@@ -13,7 +13,7 @@
 - `arxiv34k6L.csv`: ข้อมูลดิบจาก dataset
 - `data.csv`: ข้อมูลที่ผ่านขั้นตอนเตรียมแล้วบางส่วน
 
-## 1. Dataset นี้คืออะไร
+## 1. Dataset
 
 ชุดข่อมูลที่ใช้คือ ArXiv Multi-Label Text Classification
 
@@ -61,7 +61,7 @@
 
 ![โครงสร้างแบบคร่าว ๆ](images/structure.png)
 
-### โครงสร้างแบบเห็นภาพ
+### โครงสร้าง
 
 ```mermaid
 flowchart TD
