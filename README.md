@@ -306,6 +306,151 @@ print("Micro F1:", f1_micro)
 - ใช้ micro F1 เพราะเหมาะกับงาน multi-label 
 - โดย model TextCNN มีค่าประสิทธิภาพโดยประมาณอยู่ที่ 0.848
 
+### 4.9 กราฟแสดง loss และ accuracy
+
+อันนี้คือโค้ดสำหรับเทรนแบบเก็บ history แล้วพล็อตกราฟออกมาเลยในโน้ตบุ๊ก (ใช้ต่อจากโมเดลเดิมได้ทันที)
+
+```python
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.metrics import accuracy_score
+
+# ถ้าจะเทรนใหม่เพื่อเก็บ history ให้รันเซลล์นี้
+NUM_EPOCHS = 20
+
+train_loss_history = []
+train_acc_history = []
+
+for epoch in range(NUM_EPOCHS):
+	model.train()
+	total_loss = 0.0
+	batch_acc = []
+
+	for batch in train_loader:
+		input_ids = batch["input_ids"].to(device)
+		labels = batch["labels"].to(device)
+
+		optimizer.zero_grad()
+		logits = model(input_ids)
+		loss = criterion(logits, labels)
+		loss.backward()
+		optimizer.step()
+
+		total_loss += loss.item()
+
+		# multi-label prediction
+		probs = torch.sigmoid(logits)
+		preds = (probs > 0.5).int()
+
+		# exact match accuracy ต่อ batch
+		acc = accuracy_score(
+			labels.detach().cpu().numpy().astype(int),
+			preds.detach().cpu().numpy().astype(int)
+		)
+		batch_acc.append(acc)
+
+	epoch_loss = total_loss / len(train_loader)
+	epoch_acc = float(np.mean(batch_acc))
+
+	train_loss_history.append(epoch_loss)
+	train_acc_history.append(epoch_acc)
+
+	print(f"Epoch {epoch+1}/{NUM_EPOCHS} - loss: {epoch_loss:.4f} - exact_match_acc: {epoch_acc:.4f}")
+
+# plot loss + accuracy
+plt.figure(figsize=(12, 4))
+
+plt.subplot(1, 2, 1)
+plt.plot(train_loss_history, marker="o")
+plt.title("Training Loss per Epoch")
+plt.xlabel("Epoch")
+plt.ylabel("Loss")
+
+plt.subplot(1, 2, 2)
+plt.plot(train_acc_history, marker="o", color="green")
+plt.title("Training Exact-Match Accuracy per Epoch")
+plt.xlabel("Epoch")
+plt.ylabel("Accuracy")
+
+plt.tight_layout()
+plt.show()
+```
+
+อธิบายแบบเร็ว:
+
+- ฝั่งซ้ายคือ loss ต่อ epoch: ยิ่งลดลงยิ่งดี
+- ฝั่งขวาคือ exact-match accuracy: จะนับว่าถูกก็ต่อเมื่อทาย label ครบทุกตัวของ sample นั้น
+- ถ้า loss ลงแต่ accuracy ไม่ขึ้น แปลว่า threshold หรือการกระจายคลาสอาจยังเป็นคอขวด
+
+### 4.10 ประเมินโมเดล: accuracy และ confusion matrix
+
+โค้ดนี้จะสรุปผลที่อ่านง่ายขึ้น โดยมี accuracy 2 มุม + confusion matrix รายคลาส
+
+```python
+import seaborn as sns
+import matplotlib.pyplot as plt
+from sklearn.metrics import accuracy_score, hamming_loss, multilabel_confusion_matrix
+
+model.eval()
+all_preds = []
+all_true = []
+
+with torch.no_grad():
+	for batch in test_loader:
+		input_ids = batch["input_ids"].to(device)
+		labels = batch["labels"].to(device)
+
+		logits = model(input_ids)
+		probs = torch.sigmoid(logits)
+		preds = (probs > 0.5).int()
+
+		all_preds.append(preds.cpu().numpy())
+		all_true.append(labels.cpu().numpy().astype(int))
+
+y_pred = np.vstack(all_preds)
+y_true = np.vstack(all_true)
+
+# Accuracy แบบ exact match: ต้องทายถูกทุก label ใน 1 sample
+exact_match_acc = accuracy_score(y_true, y_pred)
+
+# อีกมุม: label-wise accuracy ผ่าน Hamming
+label_wise_acc = 1 - hamming_loss(y_true, y_pred)
+
+print(f"Exact-match accuracy: {exact_match_acc:.4f}")
+print(f"Label-wise accuracy (1 - hamming loss): {label_wise_acc:.4f}")
+
+# Confusion matrix แบบแยกราย label (one-vs-rest)
+mcm = multilabel_confusion_matrix(y_true, y_pred)
+
+n_classes = len(mlb.classes_)
+cols = 2
+rows = int(np.ceil(n_classes / cols))
+
+plt.figure(figsize=(10, 4 * rows))
+for i in range(n_classes):
+	plt.subplot(rows, cols, i + 1)
+	sns.heatmap(
+		mcm[i],
+		annot=True,
+		fmt="d",
+		cmap="Blues",
+		cbar=False,
+		xticklabels=["Pred 0", "Pred 1"],
+		yticklabels=["True 0", "True 1"]
+	)
+	plt.title(f"Confusion Matrix: {mlb.classes_[i]}")
+
+plt.tight_layout()
+plt.show()
+```
+
+อธิบายแบบเข้าใจง่าย:
+
+- `Exact-match accuracy` โหดกว่า เพราะต้องถูกทั้งชุด label ของ sample นั้น
+- `Label-wise accuracy` ใจดีกว่า เอาความถูกทีละ label มารวมกัน
+- confusion matrix จะบอกต่อคลาสว่าโมเดลพลาดแบบไหนบ่อย
+- ถ้าเห็น FN เยอะในคลาสไหน แปลว่าโมเดลมักมองไม่เห็นคลาสนั้น (ควรแก้ class imbalance หรือปรับ threshold)
+
 ## 5. วิธีคำนวณจำนวนพารามิเตอร์ของโมเดล
 
 อันนี้เป็นวิธีนับพารามิเตอร์ของ TextCNN ตัวนี้แบบมือ และดูว่าพารามิเตอร์ไปกองอยู่ตรงไหนเยอะสุด
@@ -367,9 +512,9 @@ trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
 
 print("Total params:", total_params)
 print("Trainable params:", trainable_params)
-
+```
 ---
-## 5. สรุปภาพรวม
+## 6. สรุปภาพรวม
 
 - EDA ช่วยในการเห็นปัญหา class imbalance และธรรมชาติของ multi-label
 - tokenizer แบบ BERT ช่วยให้ดีขึ้น
